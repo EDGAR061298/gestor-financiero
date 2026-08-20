@@ -1,11 +1,7 @@
 // lib/mongodb.ts
 import mongoose from "mongoose";
 
-const MONGODB_URI = process.env.MONGODB_URI as string;
-
-if (!MONGODB_URI) {
-  throw new Error("MONGODB_URI must be defined in environment variables");
-}
+const MONGODB_URI = process.env.MONGODB_URI || "mongodb://localhost:27017/temp_build_db";
 
 interface MongooseCache {
   conn: typeof mongoose | null;
@@ -13,22 +9,42 @@ interface MongooseCache {
 }
 
 declare global {
-  // eslint-disable-next-line no-var
-  var _mongooseCache: MongooseCache | undefined;
+  var mongoose: MongooseCache | undefined;
 }
 
-const cache: MongooseCache = global._mongooseCache ?? { conn: null, promise: null };
-global._mongooseCache = cache;
+const cached: MongooseCache = global.mongoose || { conn: null, promise: null };
 
-async function connectDB(): Promise<typeof mongoose> {
-  if (cache.conn) return cache.conn;
+if (!global.mongoose) {
+  global.mongoose = cached;
+}
 
-  if (!cache.promise) {
-    cache.promise = mongoose.connect(MONGODB_URI, { bufferCommands: false });
+export async function connectDB() {
+  if (cached.conn) {
+    return cached.conn;
   }
 
-  cache.conn = await cache.promise;
-  return cache.conn;
+  if (!process.env.MONGODB_URI) {
+    throw new Error("MONGODB_URI must be defined in environment variables");
+  }
+
+  if (!cached.promise) {
+    const opts = {
+      bufferCommands: false,
+    };
+
+    cached.promise = mongoose.connect(MONGODB_URI, opts).then((m) => {
+      return m;
+    });
+  }
+
+  try {
+    cached.conn = await cached.promise;
+  } catch (e) {
+    cached.promise = null;
+    throw e;
+  }
+
+  return cached.conn;
 }
 
 export default connectDB;
