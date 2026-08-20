@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import connectDB from "@/lib/mongodb";
 import User from "@/models/User";
+export const dynamic = "force-dynamic";
 
 const JWT_SECRET = process.env.JWT_SECRET as string;
 
