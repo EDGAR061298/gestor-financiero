@@ -2,16 +2,19 @@ FROM node:20-slim AS builder
 
 WORKDIR /app
 
-# Copiar manifiestos e instalar todas las dependencias
+# Copiar dependencias
 COPY package*.json ./
 RUN npm install
 
-# Copiar el código fuente completo
+# Copiar código
 COPY . .
 
-# Deshabilitar telemetría y compilar
+# Variables requeridas durante la compilación en Docker
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
+ENV JWT_SECRET="clave_temporal_para_build_nextjs"
+ENV MONGODB_URI="mongodb://localhost:27017/temp_build"
+
 RUN npm run build
 
 # Etapa de ejecución (Producción)
@@ -22,7 +25,6 @@ ENV NODE_ENV=production
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-# Copiar archivos compilados y dependencias necesarias
 COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next ./.next
